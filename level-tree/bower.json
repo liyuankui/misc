@@ -1,0 +1,22 @@
+{
+    "name": "level-tree",
+    "version": "1.0.0",
+    "description": "A custome element to render a JSON to tree.",
+    "main": "dist/level-tree.html",
+    "keywords": [
+        "polymer",
+        "web-components"
+    ],
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components"
+    ],
+    "dependencies": {
+        "polymer": "Polymer/polymer#~0.4",
+        "core-icon": "Polymer/core-icon#~0.5",
+        "core-icons": "Polymer/core-icons#~0.5",
+        "core-iconset": "Polymer/core-iconset#~0.5",
+        "underscore": "underscore#~1.8.3"
+    }
+}

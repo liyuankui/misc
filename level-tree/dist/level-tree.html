@@ -1,0 +1,444 @@
+<!-- Import Polymer -->
+<link rel="import" href="../../polymer/polymer.html">
+<link rel="import" href="../../core-icons/av-icons.html">
+<link rel="import" href="../../core-icons/image-icons.html">
+<link rel="import" href="../../core-icon/core-icon.html">
+<!--<link rel="import" href="../../animate.css">-->
+<script src="../../underscore/underscore-min.js"></script>
+
+<!-- Define your custom element -->
+<polymer-element name="level-tree" attributes="data-src, max-width">
+    <template>
+        <style id="innerStyleSheet">
+            li{
+                list-style-type: none;
+            }
+            .tree-icon {
+
+            }
+            .tree-node{
+                display: inline-block;
+                border: 1px solid #ddd;
+                margin: 2px 0;
+                padding: 4px 8px 4px 4px;
+                cursor: default;
+                border-radius: 2px;
+                text-decoration: none;
+                white-space: nowrap;
+                color: #333;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            .tree-node > .tree-icon {
+                transform: scale(.4);
+            }
+            .parent.tree-node > .tree-icon {
+                transform: scale(.8);
+            }
+            .parent.tree-node > .tree-icon {
+                cursor: pointer;
+            }
+            .parent.tree-node.expanded > .tree-icon {
+                transform: rotate(90deg) scale(.8);
+            }
+            .tree-icon {
+                height: 21px;
+                width: 21px;
+                margin: 0 4px;
+                display: block;
+                float: left;
+                color: #7f7f7f;
+            }
+            .tree-node:hover{
+                background: #f5f5f5;
+                border-color: #ccc;
+                box-shadow: 1px 1px 1px #f5f5f5;
+            }
+            .tree-node:active, .tree-node:focus, .tree-node.selected{
+                border-color: #333;
+                background: #e8e8e8;
+            }
+            .tree-node-container{
+                padding-left: 216px;
+                position: relative;
+            }
+            .tree-node-container.resized{
+                padding-left: 100px;
+            }
+            .tree-node-container.resized:before{
+                padding-left: 84px;
+            }
+            .tree-node-container.resized-l{
+                padding-left: 200px;
+            }
+            .tree-node-container.resized-l:before{
+                padding-left: 184px;
+            }
+            .tree-node-container.resized-xl{
+                padding-left: 300px;
+            }
+            .tree-node-container.resized-xl:before{
+                padding-left: 284px;
+            }
+            .tree-node-container.resizing:before{
+                border: none !important;
+            }
+            .tree-node-container:before{
+                content: " ";
+                padding-left: 200px;
+                border-bottom: 1px solid #ccc;
+                top: 18px;
+                left: 16px;
+                position: absolute;
+            }
+            .tree-label, .name {
+                font-size: 14px;
+                vertical-align: middle;
+                font-family: "Meiryo", "Helvetica Neue Light", "HelveticaNeue-Light", "Helvetica Neue", Calibri, Helvetica, Arial;
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .tree-branch {
+                padding: 0;
+                margin: 0;
+                position: relative;
+            }
+            .tree-branch:before {
+                content: " ";
+                position: absolute;
+                left: 16px;
+                top: 0;
+                height: calc(100% - 16px);  /* or 100px */
+                width: 1px;
+                border-left:1px solid #ccc;
+            }
+            *{
+                transition:  all .3s ease-out;
+            }
+            .connecting-line{
+                -webkit-transform-origin: 0 50%;
+                -moz-transform-origin: 0 50%;
+                transform-origin: 0 50%;
+                height: 1px;
+                background: #ddd;
+                opacity: 0.5;
+            }
+            .lane-controls {
+                margin-left: 64px;
+                height: 25px;
+                position: fixed;
+                z-index: 100;
+                top: 2px;
+            }
+            .lane-controls, .name, .handler {
+                -webkit-user-select: none;
+                display: block;
+                float: left;
+                margin-bottom: 4px;
+            }
+            .name {
+                width: 210px;
+                height: 23px;
+                text-align: center;
+                vertical-align: bottom;
+                background: #f5f5f5;
+                padding: 1px 0;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+            }
+            .handler {
+                /*background-color:  #ccc;*/
+                height: 25px;
+                width: 7px;
+                cursor: col-resize;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+                background: #f5f5f5;
+                background-image: linear-gradient(to right, transparent 3px, #ccc 4px, transparent 4px);
+            }
+            .handler:first-of-type{
+                width: 3px;
+                background-image: linear-gradient(to right, #ccc 1px, transparent 0px);
+            }
+            .handler:last-of-type{
+                width: 3px;
+                background-image: linear-gradient(to right, transparent 2px,  #ccc 3px, transparent 3px);
+            }
+            #root{
+                clear: both;
+                padding-top: 30px;
+                padding-left: 64px;
+            }
+            #root::before{
+                border: none;
+            }
+        </style>
+        <div class="lane-controls">
+            <span class="handler"></span>
+            <span data-level="1" class="name">总部</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="2" class="name">分支</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="3" class="name">部门</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="4" class="name">科室</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="5" class="name">组</span>
+            <span class="handler" on-mousedown="{{resizing}}"></span>
+        </div>
+        <li id="root" class="tree-node-container" unresolved="">
+            <template id="tree_template" bind="{{data}}">
+                <span class="tree-node {{ children && children.length > 0 ? 'parent' : ''}} expanded" on-click="{{toggleSelected}}" on-dblclick="{{toggleChildren}}">
+                    <core-icon class="tree-icon" on-click="{{toggleChildren}}" icon="{{ children && children.length > 0 ? 'av:play-arrow' : 'image:lens'}}"></core-icon>
+                    <span class="tree-label">{{ name }}</span>
+                </span>
+                <ul class="tree-branch">
+                    <template repeat="{{ child in children }}">
+                        <li class="tree-node-container">
+                            <template ref="tree_template" bind="{{child}}"></template>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+        </li>
+    </template>
+    <script>
+        Polymer('level-tree', {
+            data: {},
+            toggleChildren: function(e, detail, sender){
+                e.stopPropagation();
+                function fadeIn(el) {
+                    el.style.opacity = 0;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.opacity = +el.style.opacity + (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.opacity < 1) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+                function fadeOut(el) {
+                    el.style.opacity = 1;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.opacity = +el.style.opacity - (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.opacity > 0) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+
+                function zoomIn(el) {
+                    el.style.zoom= 0;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.zoom = +el.style.zoom + (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.zoom < 1) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }else{
+                            el.style.zoom =1;
+                        }
+                    };
+                    tick();
+                }
+                function zoomOut(el) {
+                    el.style.zoom= 1;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.zoom = +el.style.zoom - (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.zoom > 0) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+                var parent= e.target.parentNode;
+                if (parent.className.indexOf('parent') > -1 && parent.nextElementSibling) {
+                    var current_display = parent.nextElementSibling.style.display;
+                    if (current_display === 'none') {
+                        parent.className = 'tree-node parent expanded';
+                        parent.nextElementSibling.style.display = 'block';
+                        zoomIn(parent.nextElementSibling);
+                        fadeIn(parent.nextElementSibling);
+                    } else {
+                        parent.className = 'tree-node parent collapsed ';
+                        zoomOut(parent.nextElementSibling);
+                        fadeOut(parent.nextElementSibling);
+                        (function(parent){
+                            setTimeout(function(){parent.nextElementSibling.style.display = 'none';}, 300);
+                        })(parent);
+                    }
+                }
+            },
+            toggleSelected: function(e, detail, sender) {
+                var curNode = e.target;
+                while(!curNode.classList.contains('tree-node')){
+                    curNode = curNode.parentNode;
+                }
+                if(e.metaKey||e.altKey||e.shiftKey||e.ctrlKey){
+                    curNode.classList.toggle('selected');
+                }else{
+                    var allNode= this.$.root.querySelectorAll('.tree-node');
+                    Array.prototype.forEach.call(allNode, function(n){if(n !== curNode) n.classList.remove('selected')});
+                    curNode.classList.toggle('selected');
+                }
+                if(curNode.classList.contains('selected')){
+
+                }
+            },
+            resizing: function(e, detail, sender) {
+                var self = this;
+                var p = e.target.previousElementSibling;
+                var startX, startY, startWidth, startHeight;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = parseInt(document.defaultView.getComputedStyle(p).width, 10);
+                startHeight = parseInt(document.defaultView.getComputedStyle(p).height, 10);
+                var pLevel = p.getAttribute('data-level');
+                var nodes = getNodeContainersByLevel(pLevel);
+                _.each(nodes,  function(node){
+                    node.classList.add('resizing');
+                });
+                document.documentElement.addEventListener('mousemove', doDrag, false);
+                document.documentElement.addEventListener('mouseup', stopDrag, false);
+                function doDrag(e) {
+                    var offset = (startWidth + e.clientX - startX + 2*pLevel);
+                    p.style.width = offset+'px';
+                    _.each(nodes,  function(node){
+                        node.style.paddingLeft = p.style.width;
+                    });
+//                    p.style.height = (startHeight + e.clientY - startY) + 'px';
+                }
+
+                function stopDrag(e) {
+                    document.documentElement.removeEventListener('mousemove', doDrag, false);
+                    document.documentElement.removeEventListener('mouseup', stopDrag, false);
+                    var newResizeClass = addResizedClass(startWidth+e.clientX - startX + 2*pLevel);
+                    _.each(nodes,  function(node){
+                        node.className = 'tree-node-container';
+                        node.classList.add(newResizeClass);
+                    });
+//                    _.each(nodes,  function(node){
+//                        var resizeClasses = ['resized', 'resized-l', 'resized-xl'];
+//                        var curIndex=-1;
+//                        _.each(resizeClasses, function(resizeClass, i){
+//                            if(node.classList.contains(resizeClass)) {
+//                                curIndex = i;
+//                            }
+//                        });
+//                        if(curIndex>=0){
+//                            node.classList.remove(resizeClasses[curIndex]);
+//                        }
+//                        var newIndex = curIndex + (startWidth<e.clientX ? 1 : -1);
+//                        node.classList.add(resizeClasses[newIndex]);
+//                    });
+                }
+
+                function addResizedClass(newwidth){
+                    var resizeClass='resize'+(new Date().getTime());
+                    var classSelector = '.tree-node-container.'+resizeClass;
+                    addRule(classSelector, 'padding-left: '+newwidth+'px')
+                    addRule(classSelector+':not(#root):before', 'padding-left: '+(newwidth-16)+'px')
+                    return resizeClass;
+                }
+                function addRule(name, properties){
+                    self.$.innerStyleSheet.sheet.addRule(name, properties);
+                }
+
+                // .tree-node-container by level
+                function getNodeContainersByLevel(level){
+                    if(level<0) return [];
+                    return getSubByLevel(level,  self.$.root);
+                    function getSubByLevel(level, node){
+                        var result = [];
+                        if(level == 0) {
+                            result = [node];
+                        } else {
+                            var childBranch = node.querySelector('.tree-branch');
+                            _.forEach(childBranch.children, function(child){
+                                if(child.classList.contains('tree-node-container')){
+                                    result=result.concat(getSubByLevel(level-1, child));
+                                }
+                            });
+                        }
+                        return result;
+                    }
+                }
+            },
+            // Fires when an instance of the element is created
+            created: function() {},
+
+            // Fires when the element’s initial set of children and siblings are guaranteed to exist
+            domReady: function() {
+                function drawLine(x1,y1, x2,y2){
+                    var length = Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+                    var angle  = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                    var transform = 'rotate('+angle+'deg)';
+
+                    var line = document.createElement('div');
+                    line.classList.add('connecting-line');
+                    line.style.position = 'absolute';
+                    line.style.transform = transform;
+                    line.style.width= length +'px';
+                    line.style.top = y1;
+                    line.style.left = x1;
+                    return line;
+                }
+//                var l=drawLine(150,50,150,150);
+//                this.$.root.appendChild(l);
+                var maxWidthAll = parseInt(this.getAttribute("max-width"));
+                function alignChildrenWidth(node, maxWidthAll){
+                    var children = node.children;
+                    if(node.classList.contains('tree-branch')) {
+                        children = _.filter(children, function(c){return c.classList.contains('tree-node-container')});
+                        if(children.length===0) return ;
+                        var treeNodes = _.map(children, function(c){return c.querySelector('.tree-node');});
+                        var maxWidth = Math.max.apply(null, Array.prototype.map.call(treeNodes, function(c){return c.offsetWidth;}));
+                        if(maxWidthAll!==undefined && Number.isInteger(maxWidthAll)) {
+                            maxWidth = Math.min(maxWidth, maxWidthAll);
+                        }
+                        maxWidth = maxWidth+'px';
+                        _.forEach(children, function(c){
+                            var node=c.querySelector('.tree-node');
+                            node.style.width = maxWidth;
+                            node.style.maxWidth = maxWidth;
+                            var label = node.querySelector('.tree-label');
+                            if(label.scrollWidth>label.clientWidth){
+                                label.title = label.innerText;
+                            }
+                        });
+                    }
+                    _.forEach(children, function(c){
+                        alignChildrenWidth(c, maxWidthAll);
+                    });
+                }
+                var alignment = !!!(this.getAttribute("no-alignment"));
+                if(alignment){
+                    alignChildrenWidth(this.$.root, maxWidthAll);
+                }
+            },
+
+            // Fires when the "<polymer-element>" has been fully prepared
+            ready: function() {
+                if (this.dataset.src) {
+                    this.data = JSON.parse(this.dataset.src);
+                }
+                this.$.root.setAttribute('resolved', '');
+                this.$.root.removeAttribute('unresolved');
+            },
+
+            // Fires when the element was inserted into the document
+            attached: function() {},
+
+            // Fires when the element was removed from the document
+            detached: function() {},
+
+            // Fires when an attribute was added, removed, or updated
+            attributeChanged: function(attr, oldVal, newVal) {}
+        });
+    </script>
+
+</polymer-element>

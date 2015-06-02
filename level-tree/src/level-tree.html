@@ -1,0 +1,585 @@
+<!-- Import Polymer -->
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/core-icons/av-icons.html">
+<link rel="import" href="../bower_components/core-icons/image-icons.html">
+<link rel="import" href="../bower_components/core-icon/core-icon.html">
+
+<!--<link rel="import" href="../bower_components/animate.css">-->
+<script src="../bower_components/underscore/underscore-min.js"></script>
+<script src="../bower_components/within-viewport/withinviewport.js"></script>
+
+<!-- Define your custom element -->
+<polymer-element name="level-tree" attributes="data-src, max-width, no-alignment">
+    <template>
+        <style id="innerStyleSheet">
+            li{
+                list-style-type: none;
+            }
+            .tree-icon {
+
+            }
+            .tree-node{
+                display: inline-block;
+                border: 1px solid #ddd;
+                margin: 2px 0;
+                padding: 4px 8px 4px 4px;
+                cursor: default;
+                border-radius: 2px;
+                text-decoration: none;
+                white-space: nowrap;
+                color: #333;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            .tree-node > .tree-icon {
+                transform: scale(.4);
+            }
+            .parent.tree-node > .tree-icon {
+                transform: scale(.8);
+            }
+            .parent.tree-node > .tree-icon {
+                cursor: pointer;
+            }
+            .parent.tree-node.expanded > .tree-icon {
+                transform: rotate(90deg) scale(.8);
+            }
+            .tree-icon {
+                height: 21px;
+                width: 21px;
+                margin: 0 4px;
+                display: block;
+                float: left;
+                color: #7f7f7f;
+            }
+            .tree-node:hover {
+                background: #f5f5f5;
+                border-color: #ccc;
+                box-shadow: 1px 1px 1px #f5f5f5;
+            }
+            .tree-node.emphasizing, .name.emphasizing {
+                box-shadow: 0 0 1px 1px #e8e8e8;
+            }
+            .tree-node:active, .tree-node:focus, .tree-node.selected{
+                border-color: #7f7f7f;
+                background: #e8e8e8;
+            }
+            .tree-node.latest-selected {
+                /*border: 1px dashed #333;*/
+            }
+            .tree-node-container{
+                padding-left: 218px;
+                position: relative;
+            }
+            .tree-node-container.resized{
+                padding-left: 100px;
+            }
+            .tree-node-container.resized:before{
+                padding-left: 84px;
+            }
+            .tree-node-container.resized-l{
+                padding-left: 200px;
+            }
+            .tree-node-container.resized-l:before{
+                padding-left: 184px;
+            }
+            .tree-node-container.resized-xl{
+                padding-left: 300px;
+            }
+            .tree-node-container.resized-xl:before{
+                padding-left: ggg284px;
+            }
+            .tree-node-container.resizing:before{
+                border: none !important;
+            }
+            .tree-node-container:before{
+                content: " ";
+                padding-left: 200px;
+                border-bottom: 1px solid #ccc;
+                top: 18px;
+                left: 18px;
+                position: absolute;
+            }
+            .tree-label, .name {
+                font-size: 14px;
+                vertical-align: middle;
+                font-family: "Meiryo", "Helvetica Neue Light", "HelveticaNeue-Light", "Helvetica Neue", Calibri, Helvetica, Arial;
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .tree-branch {
+                padding: 0;
+                margin: 0;
+                position: relative;
+            }
+            .tree-branch:before {
+                content: " ";
+                position: absolute;
+                left: 18px;
+                height: calc(100% - 14px);  /* or 100px */
+                width: 1px;
+                border-left:1px solid #ccc;
+                top: -2px;
+            }
+            *{
+                transition:  all .3s ease-out;
+            }
+            .connecting-line{
+                -webkit-transform-origin: 0 50%;
+                -moz-transform-origin: 0 50%;
+                transform-origin: 0 50%;
+                height: 1px;
+                background: #ddd;
+                opacity: 0.5;
+            }
+            .lane-controls {
+                margin-left: 64px;
+                height: 25px;
+                position: fixed;
+                z-index: 100;
+                top: 2px;
+            }
+            .lane-controls, .name, .handler {
+                -webkit-user-select: none;
+                display: block;
+                float: left;
+                margin-bottom: 4px;
+            }
+            .name {
+                width: 210px;
+                height: 23px;
+                text-align: center;
+                vertical-align: bottom;
+                background: #f5f5f5;
+                padding: 1px 0;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+                cursor: default;
+            }
+            .handler {
+                /*background-color:  #ccc;*/
+                height: 25px;
+                width: 7px;
+                cursor: col-resize;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+                background: #f5f5f5;
+                background-image: linear-gradient(to right, transparent 3px, #ccc 4px, transparent 4px);
+            }
+            .handler:first-of-type{
+                width: 3px;
+                background-image: linear-gradient(to right, #ccc 1px, transparent 0px);
+            }
+            .handler:last-of-type{
+                width: 3px;
+                background-image: linear-gradient(to right, transparent 2px,  #ccc 3px, transparent 3px);
+            }
+            #root{
+                clear: both;
+                padding-top: 30px;
+                padding-left: 64px;
+            }
+            #root::before{
+                border: none;
+            }
+        </style>
+        <div class="lane-controls">
+            <span class="handler"></span>
+            <span data-level="1" class="name" on-mouseover="{{empLevelOn}}" on-mouseout="{{empLevelOff}}">总部</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="2" class="name" on-mouseover="{{empLevelOn}}" on-mouseout="{{empLevelOff}}">分支</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="3" class="name" on-mouseover="{{empLevelOn}}" on-mouseout="{{empLevelOff}}">部门</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="4" class="name" on-mouseover="{{empLevelOn}}" on-mouseout="{{empLevelOff}}">科室</span><span class="handler" on-mousedown="{{resizing}}"></span>
+            <span data-level="5" class="name" on-mouseover="{{empLevelOn}}" on-mouseout="{{empLevelOff}}">组</span>
+            <span class="handler" on-mousedown="{{resizing}}"></span>
+        </div>
+        <li class="tree-node-container" id="root" unresolved="" data-level="0">
+            <template id="tree_template" bind="{{data}}">
+                <span class="tree-node {{ children && children.length > 0 ? 'parent' : ''}} expanded" on-click="{{toggleSelected}}" on-dblclick="{{toggleChildren}}">
+                    <core-icon class="tree-icon" on-click="{{toggleChildren}}" icon="{{ children && children.length > 0 ? 'av:play-arrow' : 'image:lens'}}"></core-icon>
+                    <span class="tree-label">{{ name }}</span>
+                </span>
+                <ul class="tree-branch">
+                    <template repeat="{{ child in children }}">
+                        <li class="tree-node-container">
+                            <template ref="tree_template" bind="{{child}}"></template>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+        </li>
+    </template>
+    <script>
+        Polymer('level-tree', {
+            data: {},
+            toggleChildren: function(e, detail, sender){
+                if(e.stopPropagation) e.stopPropagation();
+                function fadeIn(el) {
+                    el.style.opacity = 0;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.opacity = +el.style.opacity + (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.opacity < 1) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+                function fadeOut(el) {
+                    el.style.opacity = 1;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.opacity = +el.style.opacity - (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.opacity > 0) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+
+                function zoomIn(el) {
+                    el.style.zoom= 0;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.zoom = +el.style.zoom + (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.zoom < 1) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }else{
+                            el.style.zoom =1;
+                        }
+                    };
+                    tick();
+                }
+                function zoomOut(el) {
+                    el.style.zoom= 1;
+                    var last = +new Date();
+                    var tick = function() {
+                        el.style.zoom = +el.style.zoom - (new Date() - last) / 400;
+                        last = +new Date();
+                        if (+el.style.zoom > 0) {
+                            (window.requestAnimationFrame && requestAnimationFrame(tick)) || setTimeout(tick, 16)
+                        }
+                    };
+                    tick();
+                }
+                var parent= e.target.parentNode;
+                if (parent.className.indexOf('parent') > -1 && parent.nextElementSibling) {
+                    var displayProp = parent.nextElementSibling.style.display;
+                    if (displayProp === 'none') {
+                        parent.classList.add('tree-node', 'parent', 'expanded');
+                        parent.classList.remove('collapsed');
+                        parent.nextElementSibling.style.display = 'block';
+                        zoomIn(parent.nextElementSibling);
+                        fadeIn(parent.nextElementSibling);
+                    } else {
+                        parent.classList.add('tree-node', 'parent', 'expanded');
+                        parent.classList.remove('expanded');
+                        zoomOut(parent.nextElementSibling);
+                        fadeOut(parent.nextElementSibling);
+                        (function(parent){
+                            setTimeout(function(){parent.nextElementSibling.style.display = 'none';}, 300);
+                        })(parent);
+                    }
+                }
+            },
+            toggleSelected: function(e, detail, sender) {
+                var curNode = e.target;
+                while(!curNode.classList.contains('tree-node')){
+                    curNode = curNode.parentNode;
+                }
+                var allNode= this.$.root.querySelectorAll('.tree-node');
+                Array.prototype.forEach.call(allNode, function(n){if(n !== curNode) n.classList.remove('latest-selected')});
+                curNode.classList.add('latest-selected');
+                if(e.metaKey||e.altKey||e.shiftKey||e.ctrlKey){
+                    curNode.classList.toggle('selected');
+                }else{
+                    Array.prototype.forEach.call(allNode, function(n){if(n !== curNode) n.classList.remove('selected')});
+                    curNode.classList.toggle('selected');
+                }
+                if(curNode.classList.contains('selected')){
+                    // TODO emphasize the header?
+                    this.curSelectedNode=curNode;
+                }else{
+                    this.curSelectedNode = null;
+                }
+            },
+            curSelectedNode: null,
+            emphasizedNodes: null,
+            empLevelOn: function(e, detail, sender){
+                var self = this;
+                var p=e.target;
+                var pLevel  = p.getAttribute('data-level');
+                self.emphasizedNodes = self.getNodeContainersByLevel(pLevel-1);
+                _.each(self.emphasizedNodes, function(node){
+                    node.querySelector('.tree-node').classList.add('emphasizing');
+                });
+                p.classList.add('emphasizing');
+            },
+            empLevelOff: function(e, detail, sender){
+                e.target.classList.remove('emphasizing');
+                _.each(this.emphasizedNodes, function(node){
+                    node.querySelector('.tree-node').classList.remove('emphasizing');
+                });
+            },
+            // .tree-node-container by level
+            getNodeContainersByLevel: function (level){
+                if(level<0) return [];
+                return getSubByLevel(level,  this.$.root);
+                function getSubByLevel(level, node){
+                    var result = [];
+                    if(level == 0) {
+                        result = [node];
+                    } else {
+                        var childBranch = node.querySelector('.tree-branch');
+                        _.forEach(childBranch.children, function(child){
+                            if(child.classList.contains('tree-node-container')){
+                                result=result.concat(getSubByLevel(level-1, child));
+                            }
+                        });
+                    }
+                    return result;
+                }
+            },
+            getNodesByLevel: function(level) {
+                var containers = this.getNodeContainersByLevel(level);
+                return _(containers).map(function(v){
+                   return v.querySelector('.tree-node');
+                });
+            },
+            calcLevel: function(node) {
+                if(node!=null && node.classList.contains('tree-node')){
+                    var level = 0;
+                    while(node.parentElement.id!='root') {
+                        level++;
+                        node = node.parentNode.parentNode.parentNode.querySelector('.tree-node');
+                    }
+                    return level;
+                }
+                return -1;
+            },
+            resizing: function(e, detail, sender) {
+                var self = this;
+                var p = e.target.previousElementSibling;
+                var startX, startY, startWidth, startHeight;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = parseInt(document.defaultView.getComputedStyle(p).width, 10);
+                startHeight = parseInt(document.defaultView.getComputedStyle(p).height, 10);
+                var pLevel = p.getAttribute('data-level');
+                var nodes = self.getNodeContainersByLevel(pLevel);
+                _.each(nodes,  function(node){
+                    node.classList.add('resizing');
+                });
+                document.documentElement.addEventListener('mousemove', doDrag, false);
+                document.documentElement.addEventListener('mouseup', stopDrag, false);
+                function doDrag(e) {
+                    var offset = (startWidth + e.clientX - startX + 2*pLevel);
+                    p.style.width = offset+'px';
+                    _.each(nodes,  function(node){
+                        node.style.paddingLeft = p.style.width;
+                    });
+//                    p.style.height = (startHeight + e.clientY - startY) + 'px';
+                }
+
+                function stopDrag(e) {
+                    document.documentElement.removeEventListener('mousemove', doDrag, false);
+                    document.documentElement.removeEventListener('mouseup', stopDrag, false);
+                    var newResizeClass = addResizedClass(startWidth+e.clientX - startX + 2*pLevel);
+                    _.each(nodes,  function(node){
+                        node.className = 'tree-node-container';
+                        node.classList.add(newResizeClass);
+                    });
+//                    _.each(nodes,  function(node){
+//                        var resizeClasses = ['resized', 'resized-l', 'resized-xl'];
+//                        var curIndex=-1;
+//                        _.each(resizeClasses, function(resizeClass, i){
+//                            if(node.classList.contains(resizeClass)) {
+//                                curIndex = i;
+//                            }
+//                        });
+//                        if(curIndex>=0){
+//                            node.classList.remove(resizeClasses[curIndex]);
+//                        }
+//                        var newIndex = curIndex + (startWidth<e.clientX ? 1 : -1);
+//                        node.classList.add(resizeClasses[newIndex]);
+//                    });
+                }
+
+                function addResizedClass(newwidth){
+                    var resizeClass='resize'+(new Date().getTime());
+                    var classSelector = '.tree-node-container.'+resizeClass;
+                    addRule(classSelector, 'padding-left: '+newwidth+'px')
+                    addRule(classSelector+':not(#root):before', 'padding-left: '+(newwidth-18)+'px')
+                    return resizeClass;
+                }
+                function addRule(name, properties){
+                    self.$.innerStyleSheet.sheet.addRule(name, properties);
+                }
+
+            },
+            // Fires when an instance of the element is created
+            created: function() {
+
+            },
+
+            // Fires when the element’s initial set of children and siblings are guaranteed to exist
+            domReady: function() {
+                var maxWidthAll = parseInt(this.getAttribute("max-width"));
+                function alignChildrenWidth(node, maxWidthAll){
+                    var children = node.children;
+                    if(node.classList.contains('tree-branch')) {
+                        children = _.filter(children, function(c){return c.classList.contains('tree-node-container')});
+                        if(children.length===0) return ;
+                        var treeNodes = _.map(children, function(c){return c.querySelector('.tree-node');});
+                        var maxWidth = Math.max.apply(null, Array.prototype.map.call(treeNodes, function(c){return c.offsetWidth;}));
+                        if(maxWidthAll!==undefined && Number.isInteger(maxWidthAll)) {
+                            maxWidth = Math.min(maxWidth, maxWidthAll);
+                        }
+                        maxWidth = maxWidth+'px';
+                        _.forEach(children, function(c){
+                            var node=c.querySelector('.tree-node');
+                            node.style.width = maxWidth;
+                            node.style.maxWidth = maxWidth;
+                            var label = node.querySelector('.tree-label');
+                            if(label.scrollWidth>label.clientWidth){
+                                label.title = label.innerText;
+                            }
+                        });
+                    }
+                    _.forEach(children, function(c){
+                        alignChildrenWidth(c, maxWidthAll);
+                    });
+                }
+                var alignment = !!!(this.getAttribute("no-alignment"));
+                if(alignment){
+                    alignChildrenWidth(this.$.root, maxWidthAll);
+                }
+            },
+            selectNode: function(newNode, originEvent) {
+                newNode.classList.add('selected');
+                this.curSelectedNode=newNode;
+                if(isOutOfViewport(this.curSelectedNode)){
+                    this.curSelectedNode.scrollIntoViewIfNeeded();
+                }else{
+                    originEvent.preventDefault();
+                }
+                function isOutOfViewport (el) {
+                    var rect = el.getBoundingClientRect();
+                    return rect.bottom < 0 || rect.right < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight;
+                }
+            },
+            selectNodeExclusively: function(newNode, originEvent) {
+                newNode.classList.add('selected');
+                if(this.curSelectedNode) this.curSelectedNode.classList.remove('selected');
+                this.curSelectedNode=newNode;
+                if(isOutOfViewport(this.curSelectedNode)){
+                    this.curSelectedNode.scrollIntoViewIfNeeded();
+                }else{
+                    originEvent.preventDefault();
+                }
+                function isOutOfViewport (el) {
+                    var rect = el.getBoundingClientRect();
+                    return rect.bottom < 0 || rect.right < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight;
+                }
+            },
+            // Fires when the "<polymer-element>" has been fully prepared
+            keyDownHandler: function(e, target) {
+                var self= this;
+                var keyCode = e.keyCode;
+                var newNode;
+                switch(keyCode) {
+                    case 40:
+                        if(self.curSelectedNode==null) {
+                            self.curSelectedNode = self.$.root.querySelector('.tree-node');
+                            self.curSelectedNode.classList.add('selected');
+                        } else {
+                            var level =self.calcLevel(self.curSelectedNode);
+                            var nodes = self.getNodesByLevel(level);
+                            var index = -1;
+                            _(nodes).each(function(v, i){
+                               if(v == self.curSelectedNode) {
+                                   index = i;
+                               }
+                            });
+                            if(index+1>=nodes.length||index<0) break;
+                            self.curSelectedNode.classList.remove('selected');
+                            newNode= nodes[index+1];
+                        }
+                    break;
+                    case 37:
+                        if(self.curSelectedNode == null) return;
+                        newNode = self.curSelectedNode.parentNode.parentNode.parentNode.querySelector('.tree-node');
+                    break;
+                    case 38:
+                        if(self.curSelectedNode==null) {
+                            self.curSelectedNode = self.$.root.querySelector('.tree-node');
+                            self.curSelectedNode.classList.add('selected');
+                        } else {
+                            var level =self.calcLevel(self.curSelectedNode);
+                            var nodes = self.getNodesByLevel(level);
+                            var index = -1;
+                            _(nodes).each(function(v, i){
+                                if(v == self.curSelectedNode) {
+                                    index = i;
+                                }
+                            });
+                            if(index>=nodes.length||index-1<0) break;
+                            self.curSelectedNode.classList.remove('selected');
+                            newNode= nodes[index-1];
+                        }
+                    break;
+                    case 39:
+                        if(self.curSelectedNode == null) {
+                            newNode = self.$.root.querySelector('.tree-node');
+                            break;
+                        }
+                        var childBranch= self.curSelectedNode.parentNode.querySelector('.tree-branch');
+                        if(childBranch){
+                            if(!self.curSelectedNode.classList.contains('expanded')){
+                                self.toggleChildren({target:self.curSelectedNode.querySelector('.tree-icon')});
+                            }
+                            newNode = childBranch.querySelector('.tree-node-container').querySelector('.tree-node');
+                        }
+                    break;
+                    case 32:
+                    case 13:
+                        if(self.curSelectedNode!=null) {
+                            self.toggleChildren({target:self.curSelectedNode.querySelector('.tree-icon')});
+                            e.preventDefault();
+                        }
+                    break;
+                }
+                if(newNode ==null) return;
+                if(e.altKey||e.shiftKey|| e.ctrlKey|| e.metaKey) {
+                    self.selectNode(newNode, e);
+                }
+                else {
+                    self.selectNodeExclusively(newNode, e);
+                }
+            },
+            ready: function() {
+                var self=this;
+                if (self.dataset.src) {
+                    self.data = JSON.parse(self.dataset.src);
+                }
+                self.$.root.setAttribute('resolved', '');
+                self.$.root.removeAttribute('unresolved');
+                window.addEventListener('keydown', function(e){
+                    self.keyDownHandler(e);
+                });
+            },
+
+            // Fires when the element was inserted into the document
+            attached: function() {},
+
+            // Fires when the element was removed from the document
+            detached: function() {},
+
+            // Fires when an attribute was added, removed, or updated
+            attributeChanged: function(attr, oldVal, newVal) {}
+        });
+    </script>
+
+</polymer-element>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tree Component</title>
+
+    <!-- Importing Web Component"s Polyfill -->
+    <script src="bower_components/platform/platform.js"></script>
+
+    <!-- Importing Custom Elements -->
+    <link rel="import" href="src/level-tree.html">
+</head>
+<body>
+
+    <!-- Using Custom Elements -->
+    <level-tree id="tree" max-width="300" no-alignment=""></level-tree>
+
+    <script>
+        document.getElementById('tree').data = {
+            "name": "[00]全社",
+            "children": [
+                {
+                    "name": "[01]东京总社",
+                    "children": [{
+                        "name": "[11]关联事业本部",
+                        "children": [{
+                            "name": "[141]关联事业部",
+                            "children": [{
+                                "name": "[141a]关联事业部涉外科 效益非常高的新部门"
+                            },{
+                                "name": "[141b]关联事业部国内科"
+                            }]
+                        }, {
+                            "name": "[142]杂务部 but the name is extremely long."
+                        }]
+                    }, {
+                        "name": "[12]营业本部",
+                        "children": [{
+                            "name": "[991]东京D制品营业部"
+                        }, {
+                            "name": "[150]港区营业部"
+                        }, {
+                            "name": "[A11]营业本部1"
+                        }, {
+                            "name": "[A12]营业本部2"
+                        }, {
+                            "name": "[A13]营业本部3"
+                        }, {
+                            "name": "[A14]营业本部4"
+                        }, {
+                            "name": "[A15]营业本部5"
+                        }, {
+                            "name": "[A16]营业本部6"
+                        }, {
+                            "name": "[A17]营业本部7"
+                        }, {
+                            "name": "[A18]营业本部8"
+                        }, {
+                            "name": "[A19]营业本部9"
+                        }, {
+                            "name": "[A20]营业本部10"
+                        }, {
+                            "name": "[A20]营业本部11"
+                        }, {
+                            "name": "[A21]营业本部12"
+                        }, {
+                            "name": "[A22]营业本部13"
+                        }, {
+                            "name": "[A23]营业本部14"
+                        }, {
+                            "name": "[A24]营业本部15"
+                        }, {
+                            "name": "[A25]营业本部16"
+                        }, {
+                            "name": "[A26]营业本部17"
+                        }, {
+                            "name": "[A27]营业本部18"
+                        }, {
+                            "name": "[A28]营业本部19"
+                        }, {
+                            "name": "[A29]营业本部20"
+                        }, {
+                            "name": "[A30]营业本部21"
+                        }, {
+                            "name": "[A31]营业本部22"
+                        }, {
+                            "name": "[A32]营业本部23"
+                        }]
+                    }, {
+                        "name": "[13]关东店铺"
+                    }]
+                },
+                {
+                    "name": "[02]仙台事业部"
+                }
+            ]
+        };
+    </script>
+</body>
+</html>
