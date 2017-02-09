@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         For Webmail
-// @version      0.0.1
+// @version      0.0.2
 // @namespace    KyleForWebmail
 // @include      https://mail.worksap.co.jp/webmail2/*
 // @author       Kyle
@@ -67,6 +67,34 @@ var main=function(){
             }
         });
     });
-};
-setTimeout(function(){addJQuery(main)}, 10000);
+    $(document).on('click', 'div.list-tag', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var tagId = $(this).attr('tag-id');
+        //console.log(tagId);
+        var tagList = $('.list-tag[tag-id="'+tagId+'"]');
+        var operation = 1;
 
+        tagList.each(function(){
+            //console.log(this);
+            var mail = $(this).parents(".list-mail");
+            var icon = mail.find(".mail-list-checkbox-column > i");
+            var status = icon.hasClass("awesome-icon-check-empty")? 0:1;
+            var result = operation - status;
+            //console.log(result);
+            if(result !== 0){
+                icon.parent('.mail-list-checkbox-column').click();
+            }
+        });
+    });
+    $(document).on('click', '#load-more', function(e){
+        if(!$('#load-more')[0].parentElement.parentElement.classList.contains('ng-hide')){
+            setTimeout(function(){$('#load-more')[0].click();}, 2000);
+        } else {
+            console.log('all loaded');
+        }
+    });
+
+    clearInterval(window.blinkingTimer);
+};
+setTimeout(function(){addJQuery(main);}, 10000);
