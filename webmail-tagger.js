@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         For Webmail
-// @version      0.0.2
+// @version      0.0.2.1
 // @namespace    KyleForWebmail
 // @include      https://mail.worksap.co.jp/webmail2/*
 // @author       Kyle
-// @description  This userscript is meant to be an example on how to use jQuery in a userscript on Google Chrome.
+// @description  This userscript is meant to provide 1) selection based on tags for webmail, 2) infinite load more.
 // ==/UserScript==
 
 function addJQuery(callback) {
